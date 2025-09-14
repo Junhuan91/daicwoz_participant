@@ -1,4 +1,4 @@
-# scripts/03_infer.py
+
 import argparse, yaml, os
 from pathlib import Path
 import pandas as pd
@@ -17,24 +17,24 @@ class HFAudioEmbedding:
         from transformers import AutoProcessor, AutoModel
         self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
         self.proc = AutoProcessor.from_pretrained(ckpt)
-        # 用 AutoModel 拿 hidden_states（通用表征）
+        # Use AutoModel to get hidden_states (general representations)
         self.model = AutoModel.from_pretrained(ckpt, output_hidden_states=True).to(self.device).eval()
         self.layer = layer
         self.pooling = pooling
 
     @torch.no_grad()
     def embed_batch(self, waves, sr):
-        # processor 负责对齐 padding
+        # Processor handles alignment and padding
         inputs = self.proc(waves, sampling_rate=sr, return_tensors="pt", padding=True)
         inputs = {k: v.to(self.device) for k, v in inputs.items()}
         out = self.model(**inputs)
-        # 取 hidden_states 指定层：[B, T, D]
+        # Extract hidden_states from specified layer: [B, T, D]
         if hasattr(out, "hidden_states") and out.hidden_states is not None:
             hs = out.hidden_states[self.layer]
         else:
-            # 兜底：部分模型没有 hidden_states 时用 last_hidden_state
+            # Fallback: Use last_hidden_state when some models don't have hidden_states
             hs = out.last_hidden_state
-        # 池化到 [B, D]
+        # Pool to [B, D]
         if self.pooling == "mean":
             emb = hs.mean(dim=1)
         else:
@@ -49,7 +49,7 @@ class HFTextClassifier:
         self.tok = AutoTokenizer.from_pretrained(ckpt)
         self.model = AutoModelForSequenceClassification.from_pretrained(ckpt).to(self.device).eval()
         self.id2label = self.model.config.id2label
-        # label 名到索引
+        # label from name to index
         self.target_ix = None
         if target_label is not None:
             self.target_ix = {v.lower(): k for k, v in self.id2label.items()}.get(target_label.lower(), None)
@@ -65,11 +65,11 @@ class HFTextClassifier:
         logits = self.model(**enc).logits
         probs = torch.softmax(logits, dim=-1).cpu().numpy()
         if self.target_ix is None:
-            # 没指定就取 index=1 作为“抑郁”占位
+            # Use index=1 as 'depressed' placeholder if not specified
             return probs[:, 1] if probs.shape[1] > 1 else probs[:, 0]
         return probs[:, self.target_ix]
 
-# ----------- 小头（LogReg/SVM） -----------
+# ----------- head（LogReg/SVM） -----------
 def load_head(head_path):
     import joblib
     return joblib.load(head_path)
@@ -79,14 +79,14 @@ def batched(iterable, batch_size):
         yield iterable[i:i+batch_size]
 
 def infer_audio(cfg, mname, mconf, batch=16):
-    # 路径
+    # path
     seg_idx = pd.read_csv(cfg["segments_index_csv"])          # participant, start, stop
     meta = pd.read_csv(cfg["meta_csv"])                       # participant, target, subset
     pid2subset = dict(zip(meta["participant"], meta["subset"]))
     pid2target = dict(zip(meta["participant"], meta["target"]))
     sr = cfg["sr"]
 
-    # 模型与小头
+    # model and head
     emb = HFAudioEmbedding(
         ckpt=mconf["ckpt"],
         layer=mconf.get("layer", -1),
@@ -94,11 +94,11 @@ def infer_audio(cfg, mname, mconf, batch=16):
     )
     head_path = Path(cfg["work_root"]) / "heads" / f"{mname}.joblib"
     if not head_path.exists():
-        raise FileNotFoundError(f"未找到小头 {head_path}，请先运行 train_head.py --model {mname}")
+        raise FileNotFoundError(f"can't find head {head_path}，please run train_head.py --model {mname} first")
     head = load_head(head_path)
 
     out_rows = []
-    # 逐受试者跑
+    # Run per participant
     for pid, g in tqdm(seg_idx.groupby("participant"), desc=f"[{mname}] audio segments"):
         wav_path = Path(cfg["participant_wavs_dir"]) / f"{pid}_participant.wav"
         if not wav_path.exists():
@@ -109,13 +109,13 @@ def infer_audio(cfg, mname, mconf, batch=16):
         starts = g["start"].tolist()
         stops  = g["stop"].tolist()
 
-        # 分批做 embedding + 小头概率
+        # Batch processing for embeddings + head probabilities
         for bi in batched(list(range(len(starts))), batch):
             waves = [wav[int(starts[i]*sr):int(stops[i]*sr)] for i in bi]
             if len(waves) == 0:
                 continue
             X = emb.embed_batch(waves, sr=sr)        # (B, D)
-            probs = head.predict_proba(X)[:, 1]      # 段级“抑郁”概率
+            probs = head.predict_proba(X)[:, 1]      # Segment-level depression probability
             for local_idx, p in zip(bi, probs):
                 out_rows.append({
                     "participant": int(pid),
@@ -153,7 +153,7 @@ def infer_text(cfg, mname, mconf, batch=32):
         if not texts:
             continue
 
-        # 分批跑
+        # Process in batches
         idxs = list(range(len(texts)))
         for bi in batched(idxs, batch):
             probs = clf.proba_batch([texts[i] for i in bi])
@@ -186,7 +186,7 @@ def main():
     elif backend == "hf_text_classify":
         infer_text(cfg, args.model, mconf, batch=args.batch)
     else:
-        raise ValueError(f"未知 backend: {backend}")
+        raise ValueError(f"Unknown backend: {backend}")
 
 if __name__ == "__main__":
     main()
