@@ -1,0 +1,11 @@
+torch
+torchaudio
+transformers
+soundfile
+librosa
+pandas
+numpy
+scikit-learn
+pyyaml
+tqdm
+joblib
