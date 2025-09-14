@@ -18,7 +18,8 @@ def main():
         wav_path = root/sid/f"{pid}_AUDIO.wav"
         csv_path = root/sid/f"{pid}_TRANSCRIPT.csv"
         if not wav_path.exists() or not csv_path.exists():
-            print("skip (missing)", sid): continue
+            print("skip (missing)", sid)
+            continue
         audio, sr = sf.read(wav_path)
         if sr != sr_tgt:
             raise RuntimeError(f"{wav_path} sample rate{sr}!=cfg.sr{sr_tgt},please perform uniform sampling first.")
