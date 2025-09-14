@@ -9,42 +9,39 @@ win_sec: 10.0
 hop_sec: 5.0
 
 models:
-  wavlm-Large:
-    backend: hf_audio_classify
+  wavlm_large_embed:
+    backend: hf_audio_embedding
     ckpt: microsoft/wavlm-large
-    target_label: depressed
+    layer: -1              # Extract features from the last layer (configurable)
+    pooling: mean          # Apply mean/attention pooling to frames to generate segment vectors
 
-
-models:
-  wav2vec2-large:
-    backend: hf_audio_classify
+  wav2vec2_xlsr_embed:
+    backend: hf_audio_embedding
     ckpt: facebook/wav2vec2-large-xlsr-53
-    target_label: depressed
+    layer: -1
+    pooling: mean
 
-models:
-  wav2vec2-large:
-    backend: hf_audio_classify
+  wav2vec2_audeering_emotion_embed:
+    backend: hf_audio_embedding
     ckpt: audeering/wav2vec2-large-robust-12-ft-emotion-msp-dim
-    target_label: depressed
+    take: hidden_states     # Only use hidden layers, without the emotion regression head
+    layer: -1
+    pooling: mean
 
-models:
-  hubert-large:
-    backend: hf_audio_classify
+  hubert_large_embed:
+    backend: hf_audio_embedding
     ckpt: facebook/hubert-large-ll60k
-    target_label: depressed
+    layer: -1
+    pooling: mean
 
-
-models:
-  whisper-large:
-    backend: hf_audio_classify
+  # Keep Whisper but only use as embedding (not recommended, ASR is more suitable)
+  whisper_large_embed:
+    backend: hf_audio_embedding
     ckpt: openai/whisper-large-v3
-    target_label: depressed
+    feature_type: encoder  # Extract encoder output
 
-models:
-  roberta-large:
+  roberta_large_text:
     backend: hf_text_classify
     ckpt: rafalposwiata/roberta-large-depression
     target_label: depressed
-
-  
-  
+ 
