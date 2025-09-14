@@ -1,1 +1,50 @@
+data_root: /nfs/scratch/dmamontov/daicwoz
+meta_csv: /nfs/scratch/dmamontov/daicwoz/meta_info.csv
 
+work_root: /nfs/scratch/jtan/daic_runs
+participant_wavs_dir: ${work_root}/participant_wavs
+segments_index_csv: ${work_root}/segments_index.csv
+sr: 16000
+win_sec: 10.0
+hop_sec: 5.0
+
+models:
+  wavlm-Large:
+    backend: hf_audio_classify
+    ckpt: microsoft/wavlm-large
+    target_label: depressed
+
+
+models:
+  wav2vec2-large:
+    backend: hf_audio_classify
+    ckpt: facebook/wav2vec2-large-xlsr-53
+    target_label: depressed
+
+models:
+  wav2vec2-large:
+    backend: hf_audio_classify
+    ckpt: audeering/wav2vec2-large-robust-12-ft-emotion-msp-dim
+    target_label: depressed
+
+models:
+  hubert-large:
+    backend: hf_audio_classify
+    ckpt: facebook/hubert-large-ll60k
+    target_label: depressed
+
+
+models:
+  whisper-large:
+    backend: hf_audio_classify
+    ckpt: openai/whisper-large-v3
+    target_label: depressed
+
+models:
+  roberta-large:
+    backend: hf_text_classify
+    ckpt: rafalposwiata/roberta-large-depression
+    target_label: depressed
+
+  
+  
